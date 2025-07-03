@@ -1,0 +1,237 @@
+openapi: 3.0.3
+info:
+  title: WorkMate Task Manager API
+  description: API для управления длительными I/O задачами
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Локальный сервер разработки
+
+tags:
+  - name: tasks
+    description: Операции с задачами
+
+paths:
+  /tasks:
+    post:
+      tags:
+        - tasks
+      summary: Создать новую задачу
+      description: Создает новую длительную I/O задачу, которая будет выполняться 3-5 минут
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Задача успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    get:
+      tags:
+        - tasks
+      summary: Получить список всех задач
+      description: Возвращает список всех задач в системе
+      operationId: getTasks
+      responses:
+        '200':
+          description: Список задач
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+
+  /tasks/{taskId}:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        description: Уникальный идентификатор задачи
+        schema:
+          type: string
+          format: uuid
+          
+    get:
+      tags:
+        - tasks
+      summary: Получить информацию о задаче
+      description: Возвращает информацию о задаче включая статус, время создания и продолжительность
+      operationId: getTask
+      responses:
+        '200':
+          description: Информация о задаче
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - tasks
+      summary: Удалить задачу
+      description: Удаляет задачу из системы
+      operationId: deleteTask
+      responses:
+        '204':
+          description: Задача успешно удалена
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tasks/{taskId}/result:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        description: Уникальный идентификатор задачи
+        schema:
+          type: string
+          format: uuid
+          
+    get:
+      tags:
+        - tasks
+      summary: Получить результат задачи
+      description: Возвращает результат выполнения задачи если она завершена
+      operationId: getTaskResult
+      responses:
+        '200':
+          description: Результат задачи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '425':
+          description: Задача еще не завершена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CreateTaskRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Название задачи
+          example: Process data
+          minLength: 1
+          maxLength: 255
+
+    Task:
+      type: object
+      required:
+        - id
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор задачи
+          example: 550e8400-e29b-41d4-a716-446655440000
+          readOnly: true
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+          description: Текущий статус задачи
+          example: running
+        createdAt:
+          type: string
+          format: date-time
+          description: Время создания задачи
+          example: 2024-01-15T15:04:05Z
+          readOnly: true
+        startedAt:
+          type: string
+          format: date-time
+          description: Время начала выполнения задачи
+          example: 2024-01-15T15:04:06Z
+          readOnly: true
+        finishedAt:
+          type: string
+          format: date-time
+          description: Время завершения задачи
+          example: 2024-01-15T15:07:06Z
+          readOnly: true
+        result:
+          type: string
+          description: Результат выполнения задачи (только для завершенных задач)
+          example: Task completed successfully
+          readOnly: true
+        error:
+          type: string
+          description: Описание ошибки (только для неудачных задач)
+          example: ""
+          readOnly: true
+        duration:
+          type: string
+          description: Продолжительность выполнения задачи
+          example: 3m0s
+          readOnly: true
+
+    TaskResponse:
+      type: object
+      required:
+        - task
+      properties:
+        task:
+          $ref: '#/components/schemas/Task'
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Описание ошибки
+          example: Task not found
+
+    TaskListResponse:
+      type: object
+      required:
+        - tasks
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task' 
